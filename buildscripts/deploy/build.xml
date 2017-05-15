@@ -1,0 +1,109 @@
+<project name="JnJ Deploy" basedir="../../" xmlns:sf="antlib:com.salesforce">
+
+	<!--  reference to force.com migration tool  -->
+	<taskdef uri="antlib:com.salesforce" resource="com/salesforce/antlib.xml" classpath="./buildscripts/lib/ant-salesforce_39.jar"/>
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties" classpath="./buildscripts/lib/ant-contrib-1.0.jar"/>
+
+	<!-- ========================================== -->
+	<!-- ========================================== -->
+	<!-- Default properties			 -->
+	<!-- ========================================== -->
+	<property file="./Scripting/deploy/build.properties"/>
+
+	<!-- Get properties from Jenkins env  -->
+
+	<property environment="env" />
+	<property name="sf_username" value="${env.sf_username}" />
+	<property name="sf_url" value="${env.sf_url}" />
+	<property name="sf_password" value="${env.sf_password}" />
+	<property name="sf_maxPoll" value="${env.sf_maxPoll}" />
+	<property name="sf_pollWaitMillis" value="${env.sf_pollWaitMillis}" />
+	<property name="sf_retrieveTarget" value="${env.sf_pollWaitMillis}" />
+	<property name="deploy_roots" value="${env.deploy_roots}" />
+	<property name="selectedTests" value="${env.selectedTests}"/>
+
+
+	<!-- New model deploys -->
+
+
+	<target name="build">		
+		<echo>Deploying folder ./build to org: ${sf_url} using user: ${sf_username}</echo>			
+		<sf:deploy username="${sf_username}"
+			password="${sf_password}"
+			serverurl="${sf_url}"
+			deployRoot="./build"
+			maxPoll="${sf_maxPoll}"
+			pollWaitMillis="${sf_pollWaitMillis}"/>
+	</target>
+
+	<!-- This is the target that is modified in-flight to add specified tests -->
+
+	 <target name="deployWithSelectedTests">
+	 	<echo>Deploying folder ${deployroot} to org: ${sf_url} using user: ${sf_username} running tests: ${selectedTests} with checkonly: ${checkOnly}</echo>
+	 	<sf:deploy 
+	 		testLevel="RunSpecifiedTests" 
+	 		username="${sf_username}" 
+	 		password="${sf_password}" 
+	 		serverurl="${sf_url}"  
+	 		maxPoll="${sf_maxPoll}"
+	 		pollWaitMillis="${sf_pollWaitMillis}"
+	 		deployRoot="./packages/${deployroot}"
+	 		checkOnly="${checkOnly}"
+	 		>
+	 	</sf:deploy>
+	 </target>
+
+	 <!-- This is the target that is modified in-flight to add specified tests (to build from ./build directory) -->
+
+	<target name="buildWithSelectedTests">		
+		<echo>Deploying folder ./build to org: ${sf_url} using user: ${sf_username}</echo>			
+		<sf:deploy 
+			testLevel="RunSpecifiedTests" 
+			username="${sf_username}"
+			password="${sf_password}"
+			serverurl="${sf_url}"
+			deployRoot="./build"
+			maxPoll="${sf_maxPoll}"
+			pollWaitMillis="${sf_pollWaitMillis}"/>
+	</target>
+
+	<!-- This is the target that does the actual salesforce deploy.
+	Not intended to be called directly, but instead from the generic_multi_build target -->
+
+	<target name="deploy">
+		<echo>Deploying folder ${deployroot} to org: ${sf_url} using user: ${sf_username}, validate: ${checkOnly}</echo>
+		<sf:deploy username="${sf_username}"
+			password="${sf_password}"
+			serverurl="${sf_url}"
+			deployRoot="./packages/${deployroot}"
+			maxPoll="${sf_maxPoll}"
+			pollWaitMillis="${sf_pollWaitMillis}"
+			checkOnly="${checkOnly}"/>
+	</target>
+
+		<!-- This is the target for the post-CI-build retrieve to put the code back into the repo	 -->
+
+	<target name="retrieveUnpackaged">
+		<!-- <mkdir dir="${dirname}"/>  -->
+		<echo>Retrieving src/package.xml from org: ${sf_url} using user: ${sf_username}</echo>
+		<sf:retrieve 
+			username="${sf_username}"
+			password="${sf_password}"
+			serverurl="${sf_url}"  
+			maxPoll="${sf_maxPoll}"
+			pollWaitMillis="${sf_pollWaitMillis}" 
+			retrieveTarget="src"
+			unpackaged="src/package.xml" 
+			unzip="true"/>
+
+	</target>
+
+	<target name="sonarretrieve">
+	        <sf:retrieve username="${sf_username}" password="${sf_password}" serverurl="${sf_url}" retrieveTarget="../repo" unpackaged="Scripting/sonarqube/package.xml"/>
+	</target>
+
+	<target name="sonarAnyScanRetrieve">
+		<echo>Retrieving code, triggers, pages and components from org: ${sf_url} using user: ${sf_username}</echo>
+	    <sf:retrieve username="${sf_username}" password="${sf_password}" serverurl="${sf_url}" retrieveTarget="${sf_retrieveTarget}" unpackaged="buildscripts/sonarqube/package.xml"/>
+	</target>
+</project>
